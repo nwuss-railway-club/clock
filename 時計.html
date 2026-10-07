@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カスタム時計（現在時刻同期機能付き）</title>
+    <style>
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* コントローラーのスタイル */
+        .controls {
+            position: absolute;
+            top: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            backdrop-filter: blur(5px);
+            z-index: 10;
+        }
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+        .mode-group {
+            border-right: 1px solid #555;
+            padding-right: 15px;
+        }
+        .mode-label {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        input[type="number"], input[type="time"] {
+            background: #222;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 5px;
+            border-radius: 4px;
+        }
+        button {
+            background: #fff;
+            color: #000;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #ccc;
+        }
+        /* 現在時刻ボタンを目立たせる */
+        .btn-now {
+            background: #00ff66;
+            color: #000;
+        }
+        .btn-now:hover {
+            background: #00cc55;
+        }
+
+        /* 時計の表示 */
+        .time {
+            font-size: 15vw;
+            font-weight: bold;
+            font-variant-numeric: tabular-nums;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- コントローラー部分 -->
+    <div class="controls">
+        <!-- モード切り替え -->
+        <div class="control-group mode-group">
+            <label class="mode-label">
+                <input type="radio" name="clockMode" value="normal" onchange="toggleMode()"> 普通の時計
+            </label>
+            <label class="mode-label">
+                <input type="radio" name="clockMode" value="speed" checked onchange="toggleMode()"> 倍速モード
+            </label>
+        </div>
+
+        <div class="control-group" id="speedSettingGroup">
+            <label for="speed">進む速さ (1秒で進む秒数):</label>
+            <input type="number" id="speed" value="15" min="1" max="3600" style="width: 60px;"> 秒
+        </div>
+        
+        <div class="control-group">
+            <button onclick="syncToCurrentTime()" class="btn-now">現在時刻に合わせる</button>
+            <label for="customTime">または指定:</label>
+            <input type="time" id="customTime" step="1">
+            <button onclick="setTime()">設定</button>
+        </div>
+    </div>
+
+    <!-- 時計表示部分 -->
+    <div id="clock" class="time">00:00:00</div>
+
+    <script>
+        let virtualTime = new Date();
+        let speedInput = document.getElementById('speed');
+        let speedSettingGroup = document.getElementById('speedSettingGroup');
+
+        // 入力欄の初期値を現在の「時:分:00秒」にする関数
+        function updateInputPreset(dateObj) {
+            document.getElementById('customTime').value = 
+                `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}:00`;
+        }
+
+        // 完全に「本物の現在時刻」に同期する関数
+        function syncToCurrentTime() {
+            const realNow = new Date();
+            virtualTime = new Date(realNow.getTime()); // 現在の実時間をコピー
+            updateInputPreset(realNow);
+            updateClockDisplay();
+        }
+
+        // モード変更時に設定欄の表示を切り替える
+        function toggleMode() {
+            const mode = document.querySelector('input[name="clockMode"]:checked').value;
+            if (mode === 'normal') {
+                speedSettingGroup.style.opacity = '0.3';
+                speedInput.disabled = true;
+            } else {
+                speedSettingGroup.style.opacity = '1';
+                speedInput.disabled = false;
+            }
+        }
+
+        // ユーザーが指定した時間に時計を合わせる関数
+        function setTime() {
+            const timeVal = document.getElementById('customTime').value;
+            if (!timeVal) return;
+            
+            const [h, m, s] = timeVal.split(':');
+            virtualTime.setHours(parseInt(h), parseInt(m), s ? parseInt(s) : 0);
+            updateClockDisplay();
+        }
+
+        // 表示だけを更新する関数
+        function updateClockDisplay() {
+            const hours = String(virtualTime.getHours()).padStart(2, '0');
+            const minutes = String(virtualTime.getMinutes()).padStart(2, '0');
+            const seconds = String(virtualTime.getSeconds()).padStart(2, '0');
+            document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds}`;
+        }
+
+        // 1秒ごとに時間を進めるメイン処理
+        function tick() {
+            const mode = document.querySelector('input[name="clockMode"]:checked').value;
+            let secondsToAdd = 1; 
+            
+            if (mode === 'speed') {
+                secondsToAdd = parseInt(speedInput.value) || 15;
+            }
+            
+            virtualTime.setSeconds(virtualTime.getSeconds() + secondsToAdd);
+            updateClockDisplay();
+        }
+
+        // 起動時の初期化処理（初回も00秒にリセットせず、完全に今の時間からスタート）
+        const initNow = new Date();
+        virtualTime = new Date(initNow.getTime());
+        updateInputPreset(initNow);
+        updateClockDisplay();
+        toggleMode();
+        
+        // 1秒（1000ミリ秒）ごとに実行
+        setInterval(tick, 1000);
+    </script>
+
+</body>
+</html>
