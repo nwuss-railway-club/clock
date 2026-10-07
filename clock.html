@@ -1,2 +1,132 @@
-# clock
-時計
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カスタム倍速時計</title>
+    <style>
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* コントローラーのスタイル */
+        .controls {
+            position: absolute;
+            top: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            backdrop-filter: blur(5px);
+            z-index: 10;
+        }
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+        input[type="number"], input[type="time"] {
+            background: #222;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 5px;
+            border-radius: 4px;
+        }
+        button {
+            background: #fff;
+            color: #000;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #ccc;
+        }
+
+        /* 時計の表示 */
+        .time {
+            font-size: 15vw;
+            font-weight: bold;
+            font-variant-numeric: tabular-nums;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- コントローラー部分 -->
+    <div class="controls">
+        <div class="control-group">
+            <label for="speed">進む速さ (1秒で進む秒数):</label>
+            <input type="number" id="speed" value="15" min="1" max="3600" style="width: 60px;"> 秒
+        </div>
+        <div class="control-group">
+            <label for="customTime">開始時間:</label>
+            <input type="time" id="customTime" step="1">
+            <button onclick="setTime()">設定</button>
+        </div>
+    </div>
+
+    <!-- 時計表示部分 -->
+    <div id="clock" class="time">00:00:00</div>
+
+    <script>
+        let virtualTime = new Date();
+        let speedInput = document.getElementById('speed');
+
+        // 現在の時刻をタイムインプットの初期値に設定
+        const now = new Date();
+        document.getElementById('customTime').value = 
+            `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+        // ユーザーが指定した時間に時計を合わせる関数
+        function setTime() {
+            const timeVal = document.getElementById('customTime').value;
+            if (!timeVal) return;
+            
+            const [h, m, s] = timeVal.split(':');
+            virtualTime.setHours(parseInt(h), parseInt(m), s ? parseInt(s) : 0);
+            updateClockDisplay();
+        }
+
+        // 表示だけを更新する関数
+        function updateClockDisplay() {
+            const hours = String(virtualTime.getHours()).padStart(2, '0');
+            const minutes = String(virtualTime.getMinutes()).padStart(2, '0');
+            const seconds = String(virtualTime.getSeconds()).padStart(2, '0');
+            document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds}`;
+        }
+
+        // 1秒ごとに時間を進めるメイン処理
+        function tick() {
+            // 入力された「進む秒数」を取得（デフォルトは15）
+            const secondsToAdd = parseInt(speedInput.value) || 15;
+            
+            // 仮想時間を進める
+            virtualTime.setSeconds(virtualTime.getSeconds() + secondsToAdd);
+            
+            updateClockDisplay();
+        }
+
+        // 初期表示
+        updateClockDisplay();
+        // 1秒（1000ミリ秒）ごとに実行
+        setInterval(tick, 1000);
+    </script>
+
+</body>
+</html>
